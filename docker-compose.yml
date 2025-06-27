@@ -1,0 +1,47 @@
+version: "3.9"
+
+services:
+  mongodb:
+    image: mongo:latest
+    container_name: mongodb
+    hostname: mongodb
+    volumes:
+      - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+      - mongodb-data:/data/db/
+      - mongodb-log:/var/log/mongodb/
+    env_file:
+      - .env
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
+      MONGO_INITDB_DATABASE: messageapp
+    ports:
+      - "27017:27017"
+    networks:
+      - app_network
+
+  birthdayapp:
+    container_name: birthdayapp
+    build:
+      context: .               # Context is still the root
+      dockerfile: api.Dockerfile
+    env_file:
+      - .env
+    ports:
+      - "3000:3000"
+    working_dir: /app         # This is where we copied our app
+    depends_on:
+      - mongodb
+    networks:
+      - app_network
+    # OPTIONAL: live dev mode
+    volumes:
+      - ./birthday-app:/app
+
+volumes:
+  mongodb-data:
+  mongodb-log:
+
+networks:
+  app_network:
+    driver: bridge
