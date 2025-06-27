@@ -1,0 +1,43 @@
+# Running the Birthday App with Docker Compose
+
+Follow these steps to run the app using Docker Compose:
+
+## Prerequisites
+
+- [Docker](https://docs.docker.com/get-docker/) installed
+- [Docker Compose](https://docs.docker.com/compose/install/) installed
+
+## Steps
+
+1. **Clone the repository** (if you haven't already):
+
+    ```bash
+    git clone https://github.com/saldhyyoga/birthday-app
+    cd birthday-app
+    ```
+
+2. **Start the app:**
+
+    ```bash
+    docker-compose up
+    ```
+
+    To run in detached mode:
+
+    ```bash
+    docker-compose up -d
+    ```
+
+3. **Access the app:**
+
+    Open your browser and go to [http://localhost:3000]
+
+5. **Stop the app:**
+
+    Press `Ctrl+C` or run:
+
+    ```bash
+    docker-compose down
+    ```
+
+---
