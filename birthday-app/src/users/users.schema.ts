@@ -16,6 +16,9 @@ export class User extends Document {
 
   @Prop({ required: true })
   timezone: string;
+
+  @Prop({ required: true })
+  nextBirthdayAtUtc: Date;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);
