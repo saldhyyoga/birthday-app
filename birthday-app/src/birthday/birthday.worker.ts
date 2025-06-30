@@ -26,7 +26,7 @@ export class BirthdayWorker {
 
     if (hours === 0 && minutes === 0) {
       this.logger.log(
-        '🎉 It is 00:00 London time! Running generate birthday job...',
+        '🎉 It is 00:00 UTC time! Running generate birthday job...',
       );
 
       await this.birthdayService.generateBirthdayJobForToday();
