@@ -113,7 +113,7 @@ export class BirthdayService {
         });
 
         this.logger.log(
-          `🎉 Created birthday job for user ${user.id} → sendBirthdayAt (UTC): ${sendBirthdayAtUtc.toString()}`,
+          `Created birthday job for user ${user.id} → sendBirthdayAt (UTC): ${sendBirthdayAtUtc.toString()}`,
         );
       } catch (err) {
         this.logger.error(
@@ -134,9 +134,7 @@ export class BirthdayService {
    * 3. For each job, converts times to the user's local timezone
    * 4. Sends birthday log if current user local time matches the scheduled send time at 9 AM
    * 5. Marks the job as sent and updates the user's next birthday date
-   *
-   * The method handles timezone conversions to ensure birthday logs are sent at the correct
-   * local time (9 AM) for each user regardless of their timezone.
+   * 6. Retries sending log up to maxRetries if it fails (e.g., on DB/network errors)
    *
    * @returns A promise that resolves when all birthday checks and updates are complete
    *
@@ -148,6 +146,7 @@ export class BirthdayService {
   async checkAndSendBirthdayLogs(): Promise<void> {
     const now = new Date();
     const nowUtc = new Date(now.getTime() + now.getTimezoneOffset() * 60000);
+
     // Build date range: yesterday, today, tomorrow (in UTC)
     const yesterday = startOfDay(subDays(nowUtc, 1));
     const tomorrow = endOfDay(addDays(nowUtc, 1));
@@ -158,7 +157,6 @@ export class BirthdayService {
       { month: tomorrow.getMonth() + 1, day: tomorrow.getDate() },
     ];
 
-    // Query users whose birthday (month, day) is in yesterday/today/tomorrow
     const jobs = await this.jobModel
       .find({
         sent: false,
@@ -177,46 +175,74 @@ export class BirthdayService {
 
     for (const job of jobs) {
       const userLocalNow = toZonedTime(nowUtc, job.timezone);
-
-      // sendBirthdayAt is stored in UTC; also convert to user's local time
       const sendBirthdayAtLocal = toZonedTime(job.sendBirthdayAt, job.timezone);
 
-      // need to match sendBirthdayAt and userLocalNow
-      // log birthday if current user local at 9 AM
-      if (
+      const shouldSend =
         userLocalNow.getMonth() === sendBirthdayAtLocal.getMonth() &&
         userLocalNow.getDate() === sendBirthdayAtLocal.getDate() &&
         userLocalNow.getHours() === sendBirthdayAtLocal.getHours() &&
         !job.sent &&
-        userLocalNow.getHours() === 9
-      ) {
-        this.logger.log(
-          `🎉 Happy Birthday, ${job.userName}! (${job.userEmail})`,
-        );
+        userLocalNow.getHours() === 9;
 
-        // Mark as sent & increment attempts
-        await this.jobModel.updateOne(
-          { _id: job._id },
-          {
-            sent: true,
-            sentAt: new Date(),
-            $inc: { attempts: 1 },
-          },
-        );
+      if (!shouldSend) continue;
 
-        const nextBirthdayAtUtc = calculateNextBirthdayUtc(
-          job.birthday,
-          job.timezone,
-        );
+      const maxRetries = 3;
+      let attempt = 0;
+      let success = false;
 
-        await this.userModel.updateOne(
-          { _id: job.userId },
-          { nextBirthdayAtUtc },
-        );
+      while (attempt < maxRetries && !success) {
+        try {
+          attempt++;
+          this.logger.log(
+            `Attempt ${attempt}: Sending birthday log to ${job.userName} (${job.userEmail})`,
+          );
 
-        this.logger.log(
-          `Updated user ${job.userId.toString()} nextBirthdayAtUtc: ${nextBirthdayAtUtc.toISOString()}`,
-        );
+          // "Send" the message (here: log, but could be real service)
+          this.logger.log(
+            `Happy Birthday, ${job.userName}! (${job.userEmail})`,
+          );
+
+          // Mark as sent & increment attempts
+          await this.jobModel.updateOne(
+            { _id: job._id },
+            {
+              sent: true,
+              sentAt: new Date(),
+              $inc: { attempts: 1 },
+            },
+          );
+
+          // Update user's nextBirthdayAtUtc
+          const nextBirthdayAtUtc = calculateNextBirthdayUtc(
+            job.birthday,
+            job.timezone,
+          );
+          await this.userModel.updateOne(
+            { _id: job.userId },
+            { nextBirthdayAtUtc },
+          );
+
+          this.logger.log(
+            `Successfully sent and updated user ${job.userId.toString()}; nextBirthdayAtUtc: ${nextBirthdayAtUtc.toISOString()}`,
+          );
+
+          success = true; // exit retry loop
+        } catch (err) {
+          this.logger.error(
+            `Failed attempt ${attempt} to send birthday log for ${job.userName}: ${err}`,
+          );
+
+          if (attempt < maxRetries) {
+            // Exponential backoff: wait 2^attempt seconds
+            const delayMs = Math.pow(2, attempt) * 1000;
+            this.logger.log(`⏳ Retrying after ${delayMs / 1000} seconds...`);
+            await new Promise((resolve) => setTimeout(resolve, delayMs));
+          } else {
+            this.logger.error(
+              `Failed to send birthday log after ${maxRetries} attempts for ${job.userName} (${job.userEmail})`,
+            );
+          }
+        }
       }
     }
   }
