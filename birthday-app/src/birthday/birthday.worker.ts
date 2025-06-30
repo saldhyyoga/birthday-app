@@ -25,12 +25,14 @@ export class BirthdayWorker {
     const minutes = utcDate.getMinutes();
 
     if (hours === 0 && minutes === 0) {
-      this.logger.log('🎉 It is 00:00 London time! Running birthday job...');
+      this.logger.log(
+        '🎉 It is 00:00 London time! Running generate birthday job...',
+      );
 
-      await this.birthdayService.checkAndSendBirthdayLogs();
+      await this.birthdayService.generateBirthdayJobForToday();
     } else {
       this.logger.debug(`Current UTC time: ${utcDate.toISOString()}`);
-      await this.birthdayService.generateBirthdayJobForToday();
+      await this.birthdayService.checkAndSendBirthdayLogs();
     }
   }
 }
