@@ -1,0 +1,87 @@
+{
+	"info": {
+		"_postman_id": "f8c286f9-8e60-49ca-b78d-bfc6058de19c",
+		"name": "Birthday App",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "9794583"
+	},
+	"item": [
+		{
+			"name": "Create User",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"name\": \"saldhy prathama\",\n    \"email\": \"saldhyy@gmail.com\",\n    \"birthday\": \"1990-01-01\",\n    \"timezone\": \"Asia/Jakarta\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:3000/users",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3000",
+					"path": [
+						"users"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Update User",
+			"request": {
+				"method": "PUT",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"name\": \"saldhy prathama2\",\n    \"email\": \"saldhyy@gmail.com\",\n    \"birthday\": \"1990-01-01\",\n    \"timezone\": \"Asia/Jakarta\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:3000/users/685c8b22cc26fb96056619ff",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3000",
+					"path": [
+						"users",
+						"685c8b22cc26fb96056619ff"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Delete User",
+			"request": {
+				"method": "DELETE",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:3000/users/685c8c4b07832c0b6ef1d0b7",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3000",
+					"path": [
+						"users",
+						"685c8c4b07832c0b6ef1d0b7"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}
