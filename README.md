@@ -30,7 +30,7 @@ A robust NestJS application that sends birthday greeting emails to users at 9:00
 │                                                                          │
 │  ┌──────────────┐    ┌──────────────────┐    ┌──────────────────┐       │
 │  │   User API   │    │  Job Scheduler   │    │   Job Worker     │       │
-│  │  (REST CRUD) │    │  (Cron: */15min) │    │  (Cron: */15min) │       │
+│  │  (REST CRUD) │    │  (Cron: ) 1 hour │    │  (Cron: */15min) │       │
 │  └──────┬───────┘    └────────┬─────────┘    └────────┬─────────┘       │
 │         │                     │                       │                  │
 │         │                     │                       │                  │
@@ -67,7 +67,7 @@ User API Request → Validate Input → Calculate nextBirthdayAtUtc → Save to 
                             (If update: Delete pending jobs)
 ```
 
-### 2. Job Scheduling Flow (Every 15 minutes)
+### 2. Job Scheduling Flow (Every hour)
 
 ```
 Scheduler Cron → Find users with nextBirthdayAtUtc in next 24h → Create PENDING jobs
@@ -249,7 +249,7 @@ nextBirthdayAtUtc = '2025-05-15T03:15:00.000Z';
 
 ### 2. 15-Minute Cron Interval
 
-The scheduler and worker run every 15 minutes to handle non-standard timezone offsets:
+The scheduler run every 1 hour and worker run every 15 minutes to handle non-standard timezone offsets:
 
 - Nepal: UTC+05:45
 - India: UTC+05:30
