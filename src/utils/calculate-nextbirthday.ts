@@ -29,7 +29,7 @@ export function calculateNextBirthdayUtc(
     thisYear,
     birthDate.getMonth(),
     birthDate.getDate(),
-    11,
+    9,
     0,
     0,
     0, // 09:00:00 local time
