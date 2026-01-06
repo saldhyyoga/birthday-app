@@ -22,4 +22,44 @@ model User {
   birthDate           DateTime
   timezone            String
   nextBirthdayAtUtc   DateTime
+
+  messageJobs         MessageJob[]
+
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 }
+
+model MessageJob {
+  id                  Int           @id @default(autoincrement())
+  userId              String
+  type                MessageType
+  scheduledAt         DateTime
+  status              JobStatus     @default(PENDING)
+
+  attempts            Int           @default(0)
+  maxAttempts         Int           @default(3)
+  lastError           String?
+  errorMessage        Json?
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+  processedAt         DateTime?
+
+  user                User          @relation(fields: [userId],references: [id], onDelete: Cascade)   
+
+  @@unique([userId, type, scheduledAt])
+  @@index([scheduledAt])
+  @@index([userId])                   
+}
+
+enum MessageType {
+  BIRTHDAY
+  ANNIVERSARY
+}
+
+enum JobStatus {
+  PENDING
+  DONE
+  FAILED
+  PROCESSING
+}
+

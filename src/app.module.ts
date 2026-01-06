@@ -3,9 +3,11 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { UserModule } from './user/user.module';
 import { providePrismaClientExceptionFilter } from './filters/prisma-exception-filter';
+import { ScheduleModule } from '@nestjs/schedule';
+import { MessageJobModule } from './message-job/message-job.module';
 
 @Module({
-  imports: [UserModule],
+  imports: [ScheduleModule.forRoot(), UserModule, MessageJobModule],
   controllers: [AppController],
   providers: [
     AppService,

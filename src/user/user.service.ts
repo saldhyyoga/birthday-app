@@ -5,43 +5,18 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateOrUpdateUserDto, UserDto } from './user.dto';
-import { toZonedTime } from 'date-fns-tz';
+import { calculateNextBirthdayUtc } from '../utils/calculate-nextbirthday';
+import { JobStatus, MessageType } from 'generated/prisma';
 
 @Injectable()
 export class UserService {
   private logger = new Logger(UserService.name);
   constructor(private readonly prismaService: PrismaService) {}
 
-  private calculateNextBirthdayUtc(birthDate: Date, timezone: string): Date {
-    const now = new Date();
-    const thisYear = now.getFullYear();
-
-    // create next birthday this year at 9 AM user local time
-    const targetLocal = new Date(
-      thisYear,
-      birthDate.getMonth(),
-      birthDate.getDate(),
-      8,
-      6,
-      0,
-      0, // 09:00:00
-    );
-
-    // if birthday this year already passed, move to next year
-    if (targetLocal <= now) {
-      targetLocal.setFullYear(thisYear + 1);
-    }
-
-    // convert local birthday time to UTC so it can be stored & compared
-    const targetUtc = toZonedTime(targetLocal, timezone);
-
-    return targetUtc;
-  }
-
   async createUser(dto: CreateOrUpdateUserDto): Promise<UserDto> {
     const { email, firstName, lastName } = dto;
 
-    const nextBirthdayAtUtc = this.calculateNextBirthdayUtc(
+    const nextBirthdayAtUtc = calculateNextBirthdayUtc(
       new Date(dto.birthDate),
       dto.timezone,
     );
@@ -81,24 +56,47 @@ export class UserService {
     const isBirthDateChanged =
       currentUser.birthDate.getTime() !== newBirthDate.getTime();
     const isTimezoneChanged = currentUser.timezone !== dto.timezone;
+    const needsReschedule = isBirthDateChanged || isTimezoneChanged;
 
-    // only recalculate if birthDate or timezone changed
-    const nextBirthdayAtUtc =
-      isBirthDateChanged || isTimezoneChanged
-        ? this.calculateNextBirthdayUtc(newBirthDate, dto.timezone)
-        : undefined;
+    // Only recalculate if birthDate or timezone changed
+    const nextBirthdayAtUtc = needsReschedule
+      ? calculateNextBirthdayUtc(newBirthDate, dto.timezone)
+      : undefined;
 
     try {
-      return await this.prismaService.user.update({
-        where: { id },
-        data: {
-          email,
-          firstName,
-          lastName,
-          birthDate: newBirthDate,
-          timezone: dto.timezone,
-          ...(nextBirthdayAtUtc !== undefined && { nextBirthdayAtUtc }),
-        },
+      // Use transaction to ensure atomicity
+      return await this.prismaService.$transaction(async (tx) => {
+        // If birthday schedule changed, delete pending jobs
+        if (needsReschedule) {
+          const deletedJobs = await tx.messageJob.deleteMany({
+            where: {
+              userId: id,
+              type: MessageType.BIRTHDAY,
+              status: {
+                in: [JobStatus.PENDING, JobStatus.PROCESSING],
+              },
+            },
+          });
+
+          if (deletedJobs.count > 0) {
+            this.logger.log(
+              `Deleted ${deletedJobs.count} pending birthday job(s) for user ${id} due to schedule change`,
+            );
+          }
+        }
+
+        // Update user
+        return await tx.user.update({
+          where: { id },
+          data: {
+            email,
+            firstName,
+            lastName,
+            birthDate: newBirthDate,
+            timezone: dto.timezone,
+            ...(nextBirthdayAtUtc !== undefined && { nextBirthdayAtUtc }),
+          },
+        });
       });
     } catch (error) {
       this.logger.error('Error updating user:', error);
